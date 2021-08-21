@@ -200,11 +200,13 @@ class Sexmsk:
     def main(self):
         self.auth()
         success_count = 0
-        while success_count <= 2:
+        while success_count < 2:
             result = self.spamming()
             if result == 'Success':
                 success_count += 1
+                print(result)
             elif result == 'Captcha not solved':
+                print(result)
                 continue
             else:
                 print(result)
