@@ -6,6 +6,8 @@ import os
 from random import choice
 from re import findall
 from time import sleep
+import platform
+
 
 import pandas as pd
 import requests
@@ -14,11 +16,12 @@ from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
-
+from logger import *
 from onesec_api import Mailbox
 
 DB_URL = ('https://docs.google.com/spreadsheets/u/0/d/1zaxjdu9ESYy2MCNuDow0_5PnZpwEsyrdTQ_kk0PMZbw/export?'
           'format=csv&id=1zaxjdu9ESYy2MCNuDow0_5PnZpwEsyrdTQ_kk0PMZbw&gid=807277577')
+LOGGER = logger(__name__)
 
 
 class Sexmsk:
@@ -39,12 +42,9 @@ class Sexmsk:
         self.driver = webdriver.Chrome(options=options)
 
     def photo_upload(self, input_path):
-        images_folder = f'/home/danil/images'
-        random_image = choice([
-            file for file in os.listdir(images_folder) if findall(r'\w+$', file)[0] == 'jpg'
-        ])
-        jpg = images_folder + f"/{random_image}"  # image.jpg
-        self.driver.find_element_by_xpath(input_path).send_keys(jpg)
+        random_image = images_folder + choice([
+                file for file in os.listdir(images_folder) if findall(r'\w+$', file)[0] == 'jpg'])
+        self.driver.find_element_by_xpath(input_path).send_keys(random_image)
 
     def captcha_solver(self, captcha_xpath, url):
         print('solving captcha')
@@ -55,7 +55,6 @@ class Sexmsk:
                        pageurl=url,
                        json=1)
         req = requests.get('http://rucaptcha.com/in.php', params=payload)
-
         payload = dict(key='42a3a6c8322f1bec4b5ba84b85fdbe2f',
                        action='get',
                        id=req.json()['request'],
@@ -86,7 +85,8 @@ class Sexmsk:
             assert 'Предупреждение' not in self.driver.page_source
             return True
         except Exception as error:
-            logging.exception(error)
+            LOGGER.exception(error)
+            alert(error.__str__())
             return False
 
     def spamming(self):
@@ -114,7 +114,11 @@ class Sexmsk:
             except NoSuchElementException:
                 print('Капча не найдена')
             titile_field = '//input[@class="inputbox required"]'
-            self.driver.find_element_by_xpath(titile_field).send_keys(title)
+            try:
+                self.driver.find_element_by_xpath(titile_field).send_keys(title)
+            except NoSuchElementException as error:
+                print(error)
+                return False
             woman_xpath = '//*[@id="cat_0"]/option[2]'
             self.driver.find_element_by_xpath(woman_xpath).click()
             country = '//*[@id="reg_0"]/option[2]'
@@ -125,7 +129,6 @@ class Sexmsk:
             editor_btn = '//a[@class="btn"]'
             self.driver.find_element_by_xpath(editor_btn).click()
             description_field = '//*[@id="description"]'
-
             WebDriverWait(self.driver, 2).until(
                 ec.visibility_of_element_located((By.XPATH, description_field))).send_keys(
                 f'{description}\n{self.contact}')
@@ -133,12 +136,13 @@ class Sexmsk:
             self.driver.find_element_by_xpath(contact_field).send_keys(self.contact)
             photo_xpath = '//input[@type="file"]'
             self.photo_upload(photo_xpath)
+            sleep(5)
             submit_button = '//*[@id="submit_button"]'
-            sleep(2)
             self.driver.find_element_by_xpath(submit_button).click()
             return True
-        except (NoSuchElementException, TimeoutException):
-            logging.exception('NoSuchElementException, TimeoutException')
+        except Exception as error:
+            LOGGER.exception(error)
+            alert(error.__str__())
             return False
 
     def registration(self, email):
@@ -197,6 +201,11 @@ class Sexmsk:
 
 
 if __name__ == '__main__':
+    system = platform.system()
+    if system == 'Windows':
+        images_folder = 'C:/Users/KIEV-COP-4/Desktop/RussianDoska/home/danil/images/'
+    elif system == 'Linux':
+        images_folder = '/home/danil/images/'
     df = pd.read_csv(DB_URL)
     titles = df['title'].dropna().tolist()
     descriptions = df['description'].dropna().tolist()
@@ -204,12 +213,12 @@ if __name__ == '__main__':
     logins = itertools.cycle(df['login'].dropna().tolist())
     passwords = itertools.cycle(df['password'].dropna().tolist())
     proxys = itertools.cycle(df['proxy'].dropna().tolist())
+    headless = False
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--headless", dest="headless", default=headless, help='Используй для режима без браузера',
+                        type=bool)
+    args = parser.parse_args()
     while True:
-        headless = False
-        parser = argparse.ArgumentParser()
-        parser.add_argument("--headless", dest="headless", default=headless, help='Используй для режима без браузера',
-                            type=bool)
-        args = parser.parse_args()
         sexmsk = Sexmsk(contacts, logins, passwords, titles, descriptions, proxys, args.headless)
         sexmsk.main()
         # mail = 'alianterent673@gmail.com'
