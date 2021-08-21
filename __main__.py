@@ -1,7 +1,6 @@
 import argparse
 
 import itertools
-import logging
 import os
 from random import choice
 from re import findall
@@ -40,11 +39,6 @@ class Sexmsk:
         if headless:
             options.add_argument('--headless')
         self.driver = webdriver.Chrome(options=options)
-
-    def photo_upload(self, input_path):
-        random_image = images_folder + choice([
-                file for file in os.listdir(images_folder) if findall(r'\w+$', file)[0] == 'jpg'])
-        self.driver.find_element_by_xpath(input_path).send_keys(random_image)
 
     def captcha_solver(self, captcha_xpath, url):
         print('solving captcha')
@@ -89,6 +83,18 @@ class Sexmsk:
             alert(error.__str__())
             return False
 
+    def photo_upload(self, input_path):
+        random_image = images_folder + choice([
+                file for file in os.listdir(images_folder) if findall(r'\w+$', file)[0] == 'jpg'])
+        self.driver.find_element_by_xpath(input_path).send_keys(random_image)
+        try:
+            sleep(2)
+            assert 'Failed to move uploaded photo.' not in self.driver.page_source
+            return True
+        except AssertionError:
+            print('Failed to move uploaded photo.')
+            return False
+
     def spamming(self):
         title = choice(titles)
         description = choice(descriptions)
@@ -100,7 +106,7 @@ class Sexmsk:
                 captcha_answer = self.captcha_solver(captcha_xpath, url)
                 if not captcha_answer:
                     print('captcha not solvable')
-                    return False
+                    return 'Captcha not solved'
                 captcha_answer_input_xpath = '//*[@id="g-recaptcha-response"]'
                 self.driver.execute_script(
                     'document.querySelector("#g-recaptcha-response").style="width: 250px;'
@@ -117,8 +123,7 @@ class Sexmsk:
             try:
                 self.driver.find_element_by_xpath(titile_field).send_keys(title)
             except NoSuchElementException as error:
-                print(error)
-                return False
+                return 'Timeout'
             woman_xpath = '//*[@id="cat_0"]/option[2]'
             self.driver.find_element_by_xpath(woman_xpath).click()
             country = '//*[@id="reg_0"]/option[2]'
@@ -135,15 +140,15 @@ class Sexmsk:
             contact_field = '//*[@id="contact"]'
             self.driver.find_element_by_xpath(contact_field).send_keys(self.contact)
             photo_xpath = '//input[@type="file"]'
-            self.photo_upload(photo_xpath)
-            sleep(5)
+            # if not self.photo_upload(photo_xpath):
+            #     return 'Photo upload error'
             submit_button = '//*[@id="submit_button"]'
             self.driver.find_element_by_xpath(submit_button).click()
-            return True
+            return 'Success'
         except Exception as error:
             LOGGER.exception(error)
             alert(error.__str__())
-            return False
+            return 'Critical error'
 
     def registration(self, email):
         # email = Mailbox(domain='1secmail.com')
@@ -194,8 +199,15 @@ class Sexmsk:
 
     def main(self):
         self.auth()
-        for _ in range(2):
-            if not self.spamming():
+        success_count = 0
+        while success_count <= 2:
+            result = self.spamming()
+            if result == 'Success':
+                success_count += 1
+            elif result == 'Captcha not solved':
+                continue
+            else:
+                print(result)
                 break
         self.driver.quit()
 
@@ -221,5 +233,3 @@ if __name__ == '__main__':
     while True:
         sexmsk = Sexmsk(contacts, logins, passwords, titles, descriptions, proxys, args.headless)
         sexmsk.main()
-        # mail = 'alianterent673@gmail.com'
-        # sexmsk.registration(mail)
