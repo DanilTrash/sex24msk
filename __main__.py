@@ -205,6 +205,7 @@ class Sexmsk:
             if result == 'Success':
                 success_count += 1
                 print(result)
+                sleep(30)
             elif result == 'Captcha not solved':
                 print(result)
                 continue
