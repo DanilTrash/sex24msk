@@ -1,6 +1,5 @@
 import argparse
-
-import itertools
+from itertools import cycle
 import os
 from random import choice
 from re import findall
@@ -21,11 +20,15 @@ from onesec_api import Mailbox
 DB_URL = ('https://docs.google.com/spreadsheets/u/0/d/1zaxjdu9ESYy2MCNuDow0_5PnZpwEsyrdTQ_kk0PMZbw/export?'
           'format=csv&id=1zaxjdu9ESYy2MCNuDow0_5PnZpwEsyrdTQ_kk0PMZbw&gid=807277577')
 LOGGER = logger(__name__)
+system = platform.system()
+if system == 'Windows':
+    images_folder = 'C:/Users/KIEV-COP-4/Desktop/images/'
+elif system == 'Linux':
+    images_folder = '/home/danil/images/'
 
 
 class Sexmsk:
-    def __init__(self, contacts, logins, passwords, titles, descriptions, proxys, headless=False):
-        # self.driver.maximize_window()
+    def __init__(self, contacts, logins, passwords, proxys, headless=False):  # fix titles, descriptions
         self.proxy = next(proxys)
         try:
             self.login = next(logins)
@@ -61,7 +64,7 @@ class Sexmsk:
             sleep(1)
         return False
 
-    def auth(self):
+    def auth(self):  # todo проверку элемента предупреждения
         try:
             auth = 'https://sex24msk.com/index.php/sex24msk'
             self.driver.get(auth)
@@ -70,6 +73,7 @@ class Sexmsk:
             )
             accept_button = '//div[2]/button[1]'
             self.driver.find_element_by_xpath(accept_button).click()
+            sleep(0.5)
             username_field = '//*[@id="username"]'
             self.driver.find_element_by_xpath(username_field).send_keys(self.login)
             password_field = '//*[@id="password"]'
@@ -78,6 +82,14 @@ class Sexmsk:
             self.driver.find_element_by_xpath(entry_button).click()
             assert 'Предупреждение' not in self.driver.page_source
             return True
+        except NoSuchElementException as error:
+            LOGGER.error(error)
+            alert(f'NoSuchElementException {self.login}')
+            return False
+        except AssertionError:
+            LOGGER.error(f'AssertionError  {self.login}')
+            alert(f'AssertionError {self.login}')
+            return False
         except Exception as error:
             LOGGER.exception(error)
             alert(error.__str__())
@@ -142,6 +154,7 @@ class Sexmsk:
             photo_xpath = '//input[@type="file"]'
             # if not self.photo_upload(photo_xpath):
             #     return 'Photo upload error'
+            # self.photo_upload(photo_xpath)
             submit_button = '//*[@id="submit_button"]'
             self.driver.find_element_by_xpath(submit_button).click()
             return 'Success'
@@ -150,7 +163,7 @@ class Sexmsk:
             alert(error.__str__())
             return 'Critical error'
 
-    def registration(self, email):
+    def registration(self, email):  # todo
         # email = Mailbox(domain='1secmail.com')
         print(str(email))
         try:
@@ -197,42 +210,42 @@ class Sexmsk:
         except Exception as error:
             logging.exception(error)
 
-    def main(self):
-        self.auth()
-        success_count = 0
-        while success_count < 2:
-            result = self.spamming()
-            if result == 'Success':
-                success_count += 1
-                print(result)
-                sleep(30)
-            elif result == 'Captcha not solved':
-                print(result)
-                continue
-            else:
-                print(result)
-                break
-        self.driver.quit()
+
+def main():
+    sexmsk = Sexmsk(contacts, logins, passwords, proxys, args.headless)
+    sexmsk.auth()
+    success_count = 0
+    while success_count < 1:
+        result = sexmsk.spamming()
+        if result == 'Success':
+            success_count += 1
+            print(result)
+            sleep(30)
+        elif result == 'Captcha not solved':
+            print(result)
+            continue
+        else:
+            print(result)
+            break
+    sexmsk.driver.quit()
 
 
 if __name__ == '__main__':
-    system = platform.system()
-    if system == 'Windows':
-        images_folder = 'C:/Users/KIEV-COP-4/Desktop/RussianDoska/home/danil/images/'
-    elif system == 'Linux':
-        images_folder = '/home/danil/images/'
-    df = pd.read_csv(DB_URL)
-    titles = df['title'].dropna().tolist()
-    descriptions = df['description'].dropna().tolist()
-    contacts = itertools.cycle(df['contact'].dropna().tolist())
-    logins = itertools.cycle(df['login'].dropna().tolist())
-    passwords = itertools.cycle(df['password'].dropna().tolist())
-    proxys = itertools.cycle(df['proxy'].dropna().tolist())
-    headless = False
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--headless", dest="headless", default=headless, help='Используй для режима без браузера',
-                        type=bool)
-    args = parser.parse_args()
     while True:
-        sexmsk = Sexmsk(contacts, logins, passwords, titles, descriptions, proxys, args.headless)
-        sexmsk.main()
+        df = pd.read_csv(DB_URL)
+        titles = df['title'].dropna().tolist()
+        descriptions = df['description'].dropna().tolist()
+        contacts = cycle(df['contact'].dropna().tolist())
+        logins = cycle(df['login'].dropna().tolist())
+        passwords = cycle(df['password'].dropna().tolist())
+        proxys = cycle(df['proxy'].dropna().tolist())
+        headless = False
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--headless", dest="headless", default=headless, help='Используй для режима без браузера',
+                            type=bool)
+        args = parser.parse_args()
+        for _ in range(len(df['contact'].dropna().tolist())):
+            main()
+        for _ in range(10 * 60):
+            print('sleeping')
+            sleep(1)
