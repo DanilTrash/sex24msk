@@ -163,7 +163,7 @@ class Sexmsk:
             alert(error.__str__())
             return 'Critical error'
 
-    def registration(self, email):  # todo
+    def registration(self, email):  # fix
         # email = Mailbox(domain='1secmail.com')
         print(str(email))
         try:
@@ -246,6 +246,4 @@ if __name__ == '__main__':
         args = parser.parse_args()
         for _ in range(len(df['contact'].dropna().tolist())):
             main()
-        for _ in range(10 * 60):
-            print('sleeping')
-            sleep(1)
+        sleep(10 * 60)
