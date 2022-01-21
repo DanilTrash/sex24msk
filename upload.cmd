@@ -1,1 +1,1 @@
-scp *.py danil@192.168.88.38:/home/danil/sex24msk
+scp *.py server:/home/danil/sex24msk

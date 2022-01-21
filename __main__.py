@@ -6,7 +6,7 @@ from re import findall
 from time import sleep
 import platform
 
-
+# from xvfbwrapper import Xvfb
 import pandas as pd
 import requests
 from selenium import webdriver
@@ -14,17 +14,13 @@ from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
-from logger import *
+from logger import logger, alert
 from onesec_api import Mailbox
 
 DB_URL = ('https://docs.google.com/spreadsheets/u/0/d/1zaxjdu9ESYy2MCNuDow0_5PnZpwEsyrdTQ_kk0PMZbw/export?'
           'format=csv&id=1zaxjdu9ESYy2MCNuDow0_5PnZpwEsyrdTQ_kk0PMZbw&gid=807277577')
 LOGGER = logger(__name__)
 system = platform.system()
-if system == 'Windows':
-    images_folder = 'C:/Users/KIEV-COP-4/Desktop/images/'
-elif system == 'Linux':
-    images_folder = '/home/danil/images/'
 
 
 class Sexmsk:
@@ -208,7 +204,7 @@ class Sexmsk:
             # self.driver.get(text_body.splitlines()[6])
             sleep(2)
         except Exception as error:
-            logging.exception(error)
+            LOGGER.exception(error)
 
 
 def main():
@@ -244,6 +240,11 @@ if __name__ == '__main__':
         parser.add_argument("--headless", dest="headless", default=headless, help='Используй для режима без браузера',
                             type=bool)
         args = parser.parse_args()
+        # with Xvfb():
+        if system == 'Windows':
+            images_folder = 'C:/Users/KIEV-COP-4/Desktop/images/'
+        elif system == 'Linux':
+            images_folder = '/home/danil/images/'
         for _ in range(len(df['contact'].dropna().tolist())):
             main()
         sleep(10 * 60)
